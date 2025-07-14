@@ -1,5 +1,3 @@
-pip install pyTelegramBotAPI requests python-dotenv cachetools pytz matplotlib gTTS pillow python-decouple APScheduler redis
-
 import os
 import requests
 import sqlite3

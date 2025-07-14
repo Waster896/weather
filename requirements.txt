@@ -1,0 +1,11 @@
+pyTelegramBotAPI
+requests
+python-dotenv
+cachetools
+pytz
+matplotlib
+gTTS
+pillow
+python-decouple
+APScheduler
+redis
