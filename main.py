@@ -11,14 +11,22 @@ from telebot import types
 from dotenv import load_dotenv
 from cachetools import TTLCache
 from apscheduler.schedulers.background import BackgroundScheduler
+from fastapi import FastAPI, Request
+import uvicorn
+from threading import Thread
+
+# --- Инициализация FastAPI ---
+app = FastAPI()
 
 # --- Инициализация конфигурации ---
 load_dotenv()
 
 # Создаем объект бота
-TOKEN = "7457787588:AAHsbH4g4qWTEdfT7aTK106s1NRidY2tB4E"
+TOKEN = os.getenv("TELEGRAM_TOKEN")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # URL вашего приложения на Render
+WEATHER_API = os.getenv("WEATHER_API_KEY")
+
 bot = telebot.TeleBot(TOKEN)
-WEATHER_API = "b8bf370f1dd984bfbcdf50d3d13908bb"
 
 # Настройка кэширования
 cache = TTLCache(maxsize=100, ttl=300)
@@ -276,11 +284,24 @@ scheduler = BackgroundScheduler()
 scheduler.add_job(check_weather_alerts, 'interval', hours=1)
 scheduler.start()
 
-print("Бот запущен и готов к работе!")
-try:
-    bot.infinity_polling()
-except Exception as e:
-    print(f"Ошибка в работе бота: {e}")
-finally:
-    db_conn.close()
-    scheduler.shutdown()
+# --- Webhook обработчик для FastAPI ---
+@app.post('/webhook')
+async def webhook(request: Request):
+    json_data = await request.json()
+    update = telebot.types.Update.de_json(json_data)
+    bot.process_new_updates([update])
+    return {"status": "ok"}
+
+# --- Запуск бота ---
+def start_bot():
+    # Удаляем предыдущие вебхуки
+    bot.remove_webhook()
+    # Устанавливаем новый вебхук
+    bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
+    print("Бот запущен в режиме вебхука")
+
+if __name__ == "__main__":
+    # Запускаем бот в отдельном потоке
+    Thread(target=start_bot).start()
+    # Запускаем FastAPI сервер
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))

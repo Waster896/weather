@@ -1,11 +1,10 @@
-pyTelegramBotAPI
+fastapi
+uvicorn
+python-telegram-bot
 requests
 python-dotenv
 cachetools
+apscheduler
 pytz
+gtts
 matplotlib
-gTTS
-pillow
-python-decouple
-APScheduler
-redis
