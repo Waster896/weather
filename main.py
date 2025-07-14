@@ -3,11 +3,12 @@ import requests
 import sqlite3
 from datetime import datetime
 from pytz import timezone
+import matplotlib
+matplotlib.use('Agg')  # Важно для работы без GUI
 import matplotlib.pyplot as plt
 from io import BytesIO
 from gtts import gTTS
-import telebot
-from telebot import types
+from pyTelegramBotAPI import TeleBot, types
 from dotenv import load_dotenv
 from cachetools import TTLCache
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -23,10 +24,10 @@ load_dotenv()
 
 # Создаем объект бота
 TOKEN = os.getenv("TELEGRAM_TOKEN")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # URL вашего приложения на Render
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 WEATHER_API = os.getenv("WEATHER_API_KEY")
 
-bot = telebot.TeleBot(TOKEN)
+bot = TeleBot(TOKEN)
 
 # Настройка кэширования
 cache = TTLCache(maxsize=100, ttl=300)
@@ -301,7 +302,14 @@ def start_bot():
     print("Бот запущен в режиме вебхука")
 
 if __name__ == "__main__":
-    # Запускаем бот в отдельном потоке
-    Thread(target=start_bot).start()
-    # Запускаем FastAPI сервер
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+    # Установка вебхука
+    bot.remove_webhook()
+    bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
+    
+    # Запуск FastAPI
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=int(os.getenv("PORT", 8000)),
+        workers=1
+    )
