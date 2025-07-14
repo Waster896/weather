@@ -276,13 +276,11 @@ scheduler = BackgroundScheduler()
 scheduler.add_job(check_weather_alerts, 'interval', hours=1)
 scheduler.start()
 
-# --- Запуск бота ---
-if name == 'main':
-    print("Бот запущен и готов к работе!")
-    try:
-        bot.infinity_polling()
-    except Exception as e:
-        print(f"Ошибка в работе бота: {e}")
-    finally:
-        db_conn.close()
-        scheduler.shutdown()
+print("Бот запущен и готов к работе!")
+try:
+    bot.infinity_polling()
+except Exception as e:
+    print(f"Ошибка в работе бота: {e}")
+finally:
+    db_conn.close()
+    scheduler.shutdown()
