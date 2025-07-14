@@ -8,7 +8,8 @@ matplotlib.use('Agg')  # Важно для работы без GUI
 import matplotlib.pyplot as plt
 from io import BytesIO
 from gtts import gTTS
-from pyTelegramBotAPI import TeleBot, types
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from dotenv import load_dotenv
 from cachetools import TTLCache
 from apscheduler.schedulers.background import BackgroundScheduler
