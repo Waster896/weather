@@ -32,12 +32,22 @@ WEBHOOK_URL = os.getenv("WEBHOOK_URL") + WEBHOOK_PATH
 async def lifespan(app: FastAPI):
     import os
     env_vars = {k: v for k, v in os.environ.items()}
-    await bot.set_webhook(WEBHOOK_URL)
-    scheduler.start()
-    yield
-    await bot.delete_webhook()
-    db_conn.close()
-    scheduler.shutdown()
+    print("[ENV][STARTUP] Current environment variables:", env_vars)
+    print("[LIFESPAN] Startup: entering lifespan context")
+    try:
+        await bot.set_webhook(WEBHOOK_URL)
+        scheduler.start()
+        print("[LIFESPAN] Startup complete, yielding control to app")
+        yield
+    except Exception as e:
+        print(f"[LIFESPAN] Exception during lifespan: {e}")
+        raise
+    finally:
+        print("[LIFESPAN] Shutdown: cleaning up resources")
+        await bot.delete_webhook()
+        db_conn.close()
+        scheduler.shutdown()
+        print("[LIFESPAN] Shutdown complete")
 
 # --- FastAPI и aiogram ---
 app = FastAPI(lifespan=lifespan)
