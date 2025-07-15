@@ -13,7 +13,7 @@ import time
 
 from fastapi import FastAPI, Request
 from aiogram import Bot, Dispatcher, types, F
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InputFile
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 import asyncio
@@ -213,7 +213,8 @@ async def process_forecast_request(message: types.Message, state: FSMContext):
                 })
         plot = generate_temp_plot(daily_forecasts)
         if plot:
-            await message.answer_photo(plot)
+            input_file = InputFile(plot, filename="plot.png")
+            await message.answer_photo(input_file)
         forecast_text = f"📅 Прогноз в {city} на 5 дней:\n\n" + "\n".join(
             f"🗓 {day['date']}: {day['temp']}°C, {day['description']}" for day in daily_forecasts
         )
