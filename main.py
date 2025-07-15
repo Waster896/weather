@@ -138,7 +138,6 @@ async def send_welcome(message: types.Message):
             [
                 KeyboardButton(text='🌤 Текущая погода'),
                 KeyboardButton(text='📅 Прогноз на 5 дней'),
-                KeyboardButton(text='⚠️ Установить уведомление'),
                 KeyboardButton(text='📍 Поделиться локацией', request_location=True)
             ]
         ],
