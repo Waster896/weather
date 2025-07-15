@@ -24,10 +24,22 @@ load_dotenv()
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 WEATHER_API = os.getenv("WEATHER_API")
 WEBHOOK_PATH = "/webhook"
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL") + WEBHOOK_PATH
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    import os
+    env_vars = {k: v for k, v in os.environ.items()}
+    print("[ENV][STARTUP] Current environment variables:", env_vars)
+    await bot.set_webhook(WEBHOOK_URL)
+    scheduler.start()
+    yield
+    await bot.delete_webhook()
+    db_conn.close()
+    scheduler.shutdown()
 
 # --- FastAPI и aiogram ---
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 bot = Bot(token=TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
@@ -250,7 +262,10 @@ scheduler.add_job(check_weather_alerts, 'interval', hours=1)
 # --- FastAPI webhook endpoint ---
 @app.get("/")
 async def root():
-    return {"status": "ok"}
+    import os
+    env_vars = {k: v for k, v in os.environ.items()}
+    print("[ENV] Current environment variables:", env_vars)
+    return {"status": "ok", "env": env_vars}
 
 @app.post(WEBHOOK_PATH)
 async def bot_webhook(request: Request):
@@ -258,18 +273,6 @@ async def bot_webhook(request: Request):
     print("[WEBHOOK] Incoming update:", update)  # Логируем входящие запросы
     await dp.feed_update(bot, update)
     return {"ok": True}
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await bot.set_webhook(WEBHOOK_URL)
-    scheduler.start()
-    yield
-    await bot.delete_webhook()
-    db_conn.close()
-    scheduler.shutdown()
-
-app = FastAPI(lifespan=lifespan)
 
 if __name__ == "__main__":
     import uvicorn
