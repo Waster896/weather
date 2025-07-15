@@ -266,16 +266,12 @@ scheduler.add_job(check_weather_alerts, 'interval', hours=1)
 # --- FastAPI webhook endpoint ---
 @app.get("/")
 async def root():
-    import os
-    env_vars = {k: v for k, v in os.environ.items()}
-    print("[ENV] Current environment variables:", env_vars)
-    return {"status": "ok", "env": env_vars}
+    return {"status": "ok"}
 
 @app.post(WEBHOOK_PATH)
 async def bot_webhook(request: Request):
     data = await request.json()
     update = types.Update.model_validate(data)
-    print("[WEBHOOK] Incoming update:", update)
     await dp.feed_update(bot, update)
     return {"ok": True}
 
