@@ -17,6 +17,8 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 import asyncio
+from aiogram.fsm.state import StatesGroup, State
+from aiogram.fsm.context import FSMContext
 
 # --- Инициализация конфигурации ---
 load_dotenv()
@@ -125,6 +127,10 @@ def generate_voice_message(text):
         return None
 
 # --- Хендлеры ---
+class WeatherStates(StatesGroup):
+    waiting_for_city_current = State()
+    waiting_for_city_forecast = State()
+
 @dp.message(F.text.in_(["/start", "/help"]))
 async def send_welcome(message: types.Message):
     markup = ReplyKeyboardMarkup(
@@ -146,12 +152,12 @@ async def send_welcome(message: types.Message):
     )
 
 @dp.message(F.text == '🌤 Текущая погода')
-async def request_current_weather(message: types.Message, state):
+async def request_current_weather(message: types.Message, state: FSMContext):
     await message.answer("Введите название города:")
-    await state.set_state("waiting_for_city_current")
+    await state.set_state(WeatherStates.waiting_for_city_current)
 
-@dp.message(F.state == "waiting_for_city_current")
-async def process_current_weather_request(message: types.Message, state):
+@dp.message(WeatherStates.waiting_for_city_current)
+async def process_current_weather_request(message: types.Message, state: FSMContext):
     city = message.text.strip()
     weather_data = await get_weather_data(city)
     if not weather_data or weather_data.get('cod') != 200:
@@ -182,12 +188,12 @@ async def process_current_weather_request(message: types.Message, state):
     await state.clear()
 
 @dp.message(F.text == '📅 Прогноз на 5 дней')
-async def request_forecast(message: types.Message, state):
+async def request_forecast(message: types.Message, state: FSMContext):
     await message.answer("Введите название города для прогноза:")
-    await state.set_state("waiting_for_city_forecast")
+    await state.set_state(WeatherStates.waiting_for_city_forecast)
 
-@dp.message(F.state == "waiting_for_city_forecast")
-async def process_forecast_request(message: types.Message, state):
+@dp.message(WeatherStates.waiting_for_city_forecast)
+async def process_forecast_request(message: types.Message, state: FSMContext):
     city = message.text.strip()
     forecast_data = await get_weather_data(city, forecast=True)
     if not forecast_data or forecast_data.get('cod') != '200':
