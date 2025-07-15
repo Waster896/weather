@@ -20,10 +20,10 @@ import asyncio
 # --- Инициализация конфигурации ---
 load_dotenv()
 
-TOKEN = os.getenv("TELEGRAM_TOKEN") or "7457787588:AAHsbH4qWTEdfT7aTK106s1NRidY2tB4E"
-WEATHER_API = os.getenv("WEATHER_API") or "b8bf370f1dd984bfbcdf50d3d13908bb"
+TOKEN = os.getenv("TELEGRAM_TOKEN")
+WEATHER_API = os.getenv("WEATHER_API")
 WEBHOOK_PATH = "/webhook"
-WEBHOOK_URL = os.getenv("WEBHOOK_URL") or f"https://your.domain{WEBHOOK_PATH}"
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
 # --- FastAPI и aiogram ---
 app = FastAPI()
@@ -247,9 +247,14 @@ scheduler.add_job(check_weather_alerts, 'interval', hours=1)
 # scheduler.start()  # УБРАТЬ отсюда
 
 # --- FastAPI webhook endpoint ---
+@app.get("/")
+async def root():
+    return {"status": "ok"}
+
 @app.post(WEBHOOK_PATH)
 async def bot_webhook(request: Request):
     update = await request.json()
+    print("[WEBHOOK] Incoming update:", update)  # Логируем входящие запросы
     await dp.feed_update(bot, update)
     return {"ok": True}
 
