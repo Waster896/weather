@@ -131,6 +131,32 @@ class WeatherStates(StatesGroup):
     waiting_for_city_current = State()
     waiting_for_city_forecast = State()
 
+@dp.message(F.content_type == types.ContentType.LOCATION)
+async def handle_location(message: types.Message):
+    print(f"[LOCATION] Handler triggered. message.location={getattr(message, 'location', None)}")
+    try:
+        lat = message.location.latitude
+        lon = message.location.longitude
+        async with httpx.AsyncClient() as client:
+            url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={WEATHER_API}&units=metric&lang=ru"
+            response = await client.get(url, timeout=10)
+            response.raise_for_status()
+            weather_data = response.json()
+        if weather_data.get('cod') != 200:
+            await message.answer("Не удалось определить погоду для вашей локации.")
+            return
+        city = weather_data.get('name', 'вашем местоположении')
+        temp = weather_data['main']['temp']
+        description = weather_data['weather'][0]['description'].capitalize()
+        await message.answer(
+            f"📍 Погода в {city}:\n"
+            f"🌡 {temp}°C, {description}\n"
+            f"Используйте кнопки меню для подробностей."
+        )
+    except Exception as e:
+        print(f"[LOCATION] Ошибка обработки локации: {e}")
+        await message.answer("Ошибка определения погоды по локации.")
+
 @dp.message()
 async def log_all_messages(message: types.Message):
     print(f"[LOG] Incoming message: chat_id={message.chat.id}, text={message.text}, location={getattr(message, 'location', None)}")
@@ -230,32 +256,6 @@ async def process_forecast_request(message: types.Message, state: FSMContext):
         print(f"Ошибка при обработке прогноза: {e}")
         await message.answer("Произошла ошибка при обработке прогноза.")
     await state.clear()
-
-@dp.message(F.content_type == types.ContentType.LOCATION)
-async def handle_location(message: types.Message):
-    print(f"[LOCATION] Handler triggered. message.location={getattr(message, 'location', None)}")
-    try:
-        lat = message.location.latitude
-        lon = message.location.longitude
-        async with httpx.AsyncClient() as client:
-            url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={WEATHER_API}&units=metric&lang=ru"
-            response = await client.get(url, timeout=10)
-            response.raise_for_status()
-            weather_data = response.json()
-            if weather_data.get('cod') != 200:
-                await message.answer("Не удалось определить погоду для вашей локации.")
-                return
-            city = weather_data.get('name', 'вашем местоположении')
-            temp = weather_data['main']['temp']
-            description = weather_data['weather'][0]['description'].capitalize()
-            await message.answer(
-                f"📍 Погода в {city}:\n"
-                f"🌡 {temp}°C, {description}\n"
-                f"Используйте кнопки меню для подробностей."
-            )
-    except Exception as e:
-        print(f"[LOCATION] Ошибка обработки локации: {e}")
-        await message.answer("Ошибка определения погоды по локации.")
 
 # --- Система уведомлений ---
 async def check_weather_alerts():
