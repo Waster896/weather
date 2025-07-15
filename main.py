@@ -3,6 +3,7 @@ from fastapi import FastAPI, Request
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import Message
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.filters import Command
 import asyncio
 from dotenv import load_dotenv
 
@@ -14,7 +15,7 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 app = FastAPI()
 
-@dp.message(commands=["start"])
+@dp.message(Command("start"))
 async def cmd_start(message: Message):
     await message.answer("Привет")
 
