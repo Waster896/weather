@@ -5,7 +5,7 @@ python-dotenv
 matplotlib
 gTTS
 pytz
-requests
+httpx
 cachetools
 apscheduler
 pysqlite3
