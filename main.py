@@ -159,17 +159,10 @@ async def handle_location(message: types.Message):
 
 @dp.message(F.text.in_(["/start", "/help"]))
 async def send_welcome(message: types.Message):
-    # Пробуем определить, с мобильного ли устройства пользователь
-    # В Telegram API напрямую это нельзя, но можно попробовать по chat.type или user_agent (если есть)
-    # Самый надёжный способ — всегда показывать кнопку только для private чата
-    is_private = message.chat.type == 'private'
-    # Кнопка локации только для private чата (мобильные)
     buttons = [
         KeyboardButton(text='🌤 Текущая погода'),
         KeyboardButton(text='📅 Прогноз на 5 дней')
     ]
-    if is_private:
-        buttons.append(KeyboardButton(text='📍 Поделиться локацией', request_location=True))
     markup = ReplyKeyboardMarkup(
         keyboard=[buttons],
         resize_keyboard=True
@@ -177,6 +170,7 @@ async def send_welcome(message: types.Message):
     await message.answer(
         "Добро пожаловать в WeatherBot!\n"
         "Я могу показать текущую погоду или прогноз на 5 дней.\n"
+        "Вы также можете отправить свою геолокацию (через скрепку/плюс в Telegram), и я пришлю погоду для вашего местоположения.\n"
         "Выберите действие:",
         reply_markup=markup
     )
