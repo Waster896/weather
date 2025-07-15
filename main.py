@@ -105,6 +105,7 @@ async def get_weather_data(city, forecast=False):
             print(f"[get_weather_data] Total time: {total_time:.3f}s")
 
 def generate_temp_plot(data):
+    print(f"[generate_temp_plot] called with data: {data}")
     try:
         plt.figure(figsize=(10, 5))
         dates = [day['date'] for day in data]
@@ -120,20 +121,23 @@ def generate_temp_plot(data):
         plt.savefig(img_buffer, format='png')
         img_buffer.seek(0)
         plt.close()
+        print("[generate_temp_plot] plot generated successfully")
         return img_buffer
     except Exception as e:
-        print(f"Ошибка при генерации графика: {e}")
+        print(f"[generate_temp_plot] Ошибка при генерации графика: {e}")
         return None
 
 def generate_voice_message(text):
+    print(f"[generate_voice_message] called with text: {text[:50]}...")
     try:
         tts = gTTS(text=text, lang='ru')
         voice_buffer = BytesIO()
         tts.write_to_fp(voice_buffer)
         voice_buffer.seek(0)
+        print("[generate_voice_message] voice generated successfully")
         return voice_buffer
     except Exception as e:
-        print(f"Ошибка при генерации голоса: {e}")
+        print(f"[generate_voice_message] Ошибка при генерации голоса: {e}")
         return None
 
 # --- Хендлеры ---
@@ -147,13 +151,16 @@ async def handle_location(message: types.Message):
     try:
         lat = message.location.latitude
         lon = message.location.longitude
+        print(f"[handle_location] lat={lat}, lon={lon}")
         async with httpx.AsyncClient() as client:
             url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={WEATHER_API}&units=metric&lang=ru"
             response = await client.get(url, timeout=10)
             response.raise_for_status()
             weather_data = response.json()
+        print(f"[handle_location] weather_data: {weather_data}")
         if weather_data.get('cod') != 200:
             await message.answer("Не удалось определить погоду для вашей локации.")
+            print(f"[handle_location] failed for lat={lat}, lon={lon}")
             return
         city = weather_data.get('name', 'вашем местоположении')
         temp = weather_data['main']['temp']
@@ -163,12 +170,14 @@ async def handle_location(message: types.Message):
             f"🌡 {temp}°C, {description}\n"
             f"Используйте кнопки меню для подробностей."
         )
+        print(f"[handle_location] sent weather for lat={lat}, lon={lon}")
     except Exception as e:
         print(f"[LOCATION] Ошибка обработки локации: {e}")
         await message.answer("Ошибка определения погоды по локации.")
 
 @dp.message(F.text.in_(["/start", "/help"]))
 async def send_welcome(message: types.Message):
+    print(f"[send_welcome] chat_id={message.chat.id}")
     buttons = [
         KeyboardButton(text='🌤 Текущая погода'),
         KeyboardButton(text='📅 Прогноз на 5 дней')
@@ -184,19 +193,24 @@ async def send_welcome(message: types.Message):
         "Выберите действие:",
         reply_markup=markup
     )
+    print(f"[send_welcome] message sent")
 
 @dp.message(F.text == '🌤 Текущая погода')
 async def request_current_weather(message: types.Message, state: FSMContext):
+    print(f"[request_current_weather] chat_id={message.chat.id}")
     await message.answer("Введите название города:")
     await state.set_state(WeatherStates.waiting_for_city_current)
+    print(f"[request_current_weather] state set to waiting_for_city_current")
 
 @dp.message(WeatherStates.waiting_for_city_current)
 async def process_current_weather_request(message: types.Message, state: FSMContext):
+    print(f"[process_current_weather_request] chat_id={message.chat.id}, text={message.text}")
     city = message.text.strip()
     weather_data = await get_weather_data(city)
     if not weather_data or weather_data.get('cod') != 200:
         await message.answer("Не удалось получить данные о погоде. Проверьте название города.")
         await state.clear()
+        print(f"[process_current_weather_request] failed for city={city}")
         return
     try:
         db_cursor.execute(
@@ -204,8 +218,9 @@ async def process_current_weather_request(message: types.Message, state: FSMCont
             (message.chat.id, city, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         )
         db_conn.commit()
+        print(f"[process_current_weather_request] history saved for city={city}")
     except Exception as e:
-        print(f"Ошибка при сохранении в историю: {e}")
+        print(f"[process_current_weather_request] Ошибка при сохранении в историю: {e}")
     temp = weather_data['main']['temp']
     feels_like = weather_data['main']['feels_like']
     humidity = weather_data['main']['humidity']
@@ -220,19 +235,24 @@ async def process_current_weather_request(message: types.Message, state: FSMCont
     )
     await message.answer(response_text)
     await state.clear()
+    print(f"[process_current_weather_request] sent weather for city={city}")
 
 @dp.message(F.text == '📅 Прогноз на 5 дней')
 async def request_forecast(message: types.Message, state: FSMContext):
+    print(f"[request_forecast] chat_id={message.chat.id}")
     await message.answer("Введите название города для прогноза:")
     await state.set_state(WeatherStates.waiting_for_city_forecast)
+    print(f"[request_forecast] state set to waiting_for_city_forecast")
 
 @dp.message(WeatherStates.waiting_for_city_forecast)
 async def process_forecast_request(message: types.Message, state: FSMContext):
+    print(f"[process_forecast_request] chat_id={message.chat.id}, text={message.text}")
     city = message.text.strip()
     forecast_data = await get_weather_data(city, forecast=True)
     if not forecast_data or forecast_data.get('cod') != '200':
         await message.answer("Не удалось получить прогноз. Проверьте название города.")
         await state.clear()
+        print(f"[process_forecast_request] failed for city={city}")
         return
     try:
         tz = timezone('Europe/Moscow')
@@ -245,25 +265,31 @@ async def process_forecast_request(message: types.Message, state: FSMContext):
                     'temp': item['main']['temp'],
                     'description': item['weather'][0]['description'].capitalize()
                 })
+        print(f"[process_forecast_request] daily_forecasts: {daily_forecasts}")
         plot = generate_temp_plot(daily_forecasts)
         if plot:
             input_file = BufferedInputFile(plot.getvalue(), filename="plot.png")
             await message.answer_photo(input_file)
+            print(f"[process_forecast_request] plot sent for city={city}")
         forecast_text = f"📅 Прогноз в {city} на 5 дней:\n\n" + "\n".join(
             f"🗓 {day['date']}: {day['temp']}°C, {day['description']}" for day in daily_forecasts
         )
         await message.answer(forecast_text)
+        print(f"[process_forecast_request] forecast text sent for city={city}")
         voice = generate_voice_message(forecast_text)
         if voice:
             input_voice = BufferedInputFile(voice.getvalue(), filename="voice.ogg")
             await message.answer_voice(input_voice)
+            print(f"[process_forecast_request] voice sent for city={city}")
     except Exception as e:
         print(f"Ошибка при обработке прогноза: {e}")
         await message.answer("Произошла ошибка при обработке прогноза.")
     await state.clear()
+    print(f"[process_forecast_request] finished for city={city}")
 
 # --- Система уведомлений ---
 async def check_weather_alerts():
+    print("[check_weather_alerts] called")
     try:
         db_cursor.execute("SELECT user_id, city, last_temp FROM users WHERE alert_time IS NOT NULL")
         for user_id, city, last_temp in db_cursor.fetchall():
@@ -281,8 +307,9 @@ async def check_weather_alerts():
                         (current_temp, user_id)
                     )
                     db_conn.commit()
+                    print(f"[check_weather_alerts] alert sent for user_id={user_id}, city={city}")
     except Exception as e:
-        print(f"Ошибка проверки уведомлений: {e}")
+        print(f"[check_weather_alerts] Ошибка проверки уведомлений: {e}")
 
 scheduler = AsyncIOScheduler()
 scheduler.add_job(check_weather_alerts, 'interval', hours=1)
