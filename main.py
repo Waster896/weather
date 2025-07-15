@@ -157,10 +157,6 @@ async def handle_location(message: types.Message):
         print(f"[LOCATION] Ошибка обработки локации: {e}")
         await message.answer("Ошибка определения погоды по локации.")
 
-@dp.message()
-async def log_all_messages(message: types.Message):
-    print(f"[LOG] Incoming message: chat_id={message.chat.id}, text={message.text}, location={getattr(message, 'location', None)}")
-
 @dp.message(F.text.in_(["/start", "/help"]))
 async def send_welcome(message: types.Message):
     markup = ReplyKeyboardMarkup(
