@@ -131,6 +131,10 @@ class WeatherStates(StatesGroup):
     waiting_for_city_current = State()
     waiting_for_city_forecast = State()
 
+@dp.message()
+async def log_all_messages(message: types.Message):
+    print(f"[LOG] Incoming message: chat_id={message.chat.id}, text={message.text}, location={getattr(message, 'location', None)}")
+
 @dp.message(F.text.in_(["/start", "/help"]))
 async def send_welcome(message: types.Message):
     markup = ReplyKeyboardMarkup(
@@ -229,6 +233,7 @@ async def process_forecast_request(message: types.Message, state: FSMContext):
 
 @dp.message(F.content_type == types.ContentType.LOCATION)
 async def handle_location(message: types.Message):
+    print(f"[LOCATION] Handler triggered. message.location={getattr(message, 'location', None)}")
     try:
         lat = message.location.latitude
         lon = message.location.longitude
@@ -249,7 +254,7 @@ async def handle_location(message: types.Message):
                 f"Используйте кнопки меню для подробностей."
             )
     except Exception as e:
-        print(f"Ошибка обработки локации: {e}")
+        print(f"[LOCATION] Ошибка обработки локации: {e}")
         await message.answer("Ошибка определения погоды по локации.")
 
 # --- Система уведомлений ---
