@@ -5,9 +5,8 @@ from pytz import timezone
 import matplotlib.pyplot as plt
 from io import BytesIO
 from gtts import gTTS
-import requests
+import httpx
 from dotenv import load_dotenv
-from cachetools import TTLCache
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from contextlib import asynccontextmanager
 
@@ -30,7 +29,6 @@ WEBHOOK_URL = os.getenv("WEBHOOK_URL") + WEBHOOK_PATH
 async def lifespan(app: FastAPI):
     import os
     env_vars = {k: v for k, v in os.environ.items()}
-    print("[ENV][STARTUP] Current environment variables:", env_vars)
     await bot.set_webhook(WEBHOOK_URL)
     scheduler.start()
     yield
@@ -42,9 +40,6 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 bot = Bot(token=TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
-
-# --- Кэш ---
-cache = TTLCache(maxsize=100, ttl=300)
 
 # --- Инициализация базы данных ---
 def init_db():
@@ -72,18 +67,19 @@ def init_db():
 db_conn, db_cursor = init_db()
 
 # --- Основные функции ---
-def get_weather_data(city, forecast=False):
-    try:
+async def get_weather_data(city, forecast=False):
+    async with httpx.AsyncClient() as client:
         if forecast:
             url = f"http://api.openweathermap.org/data/2.5/forecast?q={city}&appid={WEATHER_API}&units=metric&lang=ru"
         else:
             url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API}&units=metric&lang=ru"
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        print(f"Ошибка при запросе погоды: {e}")
-        return None
+        try:
+            response = await client.get(url, timeout=10)
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            print(f"Ошибка при запросе погоды: {e}")
+            return None
 
 def generate_temp_plot(data):
     try:
@@ -146,7 +142,7 @@ async def request_current_weather(message: types.Message, state):
 @dp.message(F.state == "waiting_for_city_current")
 async def process_current_weather_request(message: types.Message, state):
     city = message.text.strip()
-    weather_data = get_weather_data(city)
+    weather_data = await get_weather_data(city)
     if not weather_data or weather_data.get('cod') != 200:
         await message.answer("Не удалось получить данные о погоде. Проверьте название города.")
         await state.clear()
@@ -182,7 +178,7 @@ async def request_forecast(message: types.Message, state):
 @dp.message(F.state == "waiting_for_city_forecast")
 async def process_forecast_request(message: types.Message, state):
     city = message.text.strip()
-    forecast_data = get_weather_data(city, forecast=True)
+    forecast_data = await get_weather_data(city, forecast=True)
     if not forecast_data or forecast_data.get('cod') != '200':
         await message.answer("Не удалось получить прогноз. Проверьте название города.")
         await state.clear()
@@ -218,21 +214,22 @@ async def handle_location(message: types.Message):
     try:
         lat = message.location.latitude
         lon = message.location.longitude
-        url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={WEATHER_API}&units=metric&lang=ru"
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        weather_data = response.json()
-        if weather_data.get('cod') != 200:
-            await message.answer("Не удалось определить погоду для вашей локации.")
-            return
-        city = weather_data.get('name', 'вашем местоположении')
-        temp = weather_data['main']['temp']
-        description = weather_data['weather'][0]['description'].capitalize()
-        await message.answer(
-            f"📍 Погода в {city}:\n"
-            f"🌡 {temp}°C, {description}\n"
-            f"Используйте кнопки меню для подробностей."
-        )
+        async with httpx.AsyncClient() as client:
+            url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={WEATHER_API}&units=metric&lang=ru"
+            response = await client.get(url, timeout=10)
+            response.raise_for_status()
+            weather_data = response.json()
+            if weather_data.get('cod') != 200:
+                await message.answer("Не удалось определить погоду для вашей локации.")
+                return
+            city = weather_data.get('name', 'вашем местоположении')
+            temp = weather_data['main']['temp']
+            description = weather_data['weather'][0]['description'].capitalize()
+            await message.answer(
+                f"📍 Погода в {city}:\n"
+                f"🌡 {temp}°C, {description}\n"
+                f"Используйте кнопки меню для подробностей."
+            )
     except Exception as e:
         print(f"Ошибка обработки локации: {e}")
         await message.answer("Ошибка определения погоды по локации.")
@@ -242,7 +239,7 @@ async def check_weather_alerts():
     try:
         db_cursor.execute("SELECT user_id, city, last_temp FROM users WHERE alert_time IS NOT NULL")
         for user_id, city, last_temp in db_cursor.fetchall():
-            current_data = get_weather_data(city)
+            current_data = await get_weather_data(city)
             if current_data and current_data.get('cod') == 200:
                 current_temp = current_data['main']['temp']
                 if abs(current_temp - last_temp) >= 5:
