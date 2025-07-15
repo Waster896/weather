@@ -20,9 +20,9 @@ import asyncio
 # --- Инициализация конфигурации ---
 load_dotenv()
 
-TOKEN = os.getenv("BOT_TOKEN") or "7457787588:AAHsbH4qWTEdfT7aTK106s1NRidY2tB4E"
+TOKEN = os.getenv("TELEGRAM_TOKEN") or "7457787588:AAHsbH4qWTEdfT7aTK106s1NRidY2tB4E"
 WEATHER_API = os.getenv("WEATHER_API") or "b8bf370f1dd984bfbcdf50d3d13908bb"
-WEBHOOK_PATH = os.getenv("WEBHOOK_PATH") or "/webhook"
+WEBHOOK_PATH = "/webhook"
 WEBHOOK_URL = os.getenv("WEBHOOK_URL") or f"https://your.domain{WEBHOOK_PATH}"
 
 # --- FastAPI и aiogram ---
