@@ -9,6 +9,7 @@ import requests
 from dotenv import load_dotenv
 from cachetools import TTLCache
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from aiogram import Bot, Dispatcher, types, F
@@ -258,16 +259,17 @@ async def bot_webhook(request: Request):
     await dp.feed_update(bot, update)
     return {"ok": True}
 
-@app.on_event("startup")
-async def on_startup():
-    await bot.set_webhook(WEBHOOK_URL)
-    scheduler.start()  # ← Запускать здесь!
 
-@app.on_event("shutdown")
-async def on_shutdown():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await bot.set_webhook(WEBHOOK_URL)
+    scheduler.start()
+    yield
     await bot.delete_webhook()
     db_conn.close()
     scheduler.shutdown()
+
+app = FastAPI(lifespan=lifespan)
 
 if __name__ == "__main__":
     import uvicorn
