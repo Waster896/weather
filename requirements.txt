@@ -6,4 +6,6 @@ matplotlib
 gTTS
 pytz
 requests
+cachetools
 apscheduler
+pysqlite3
