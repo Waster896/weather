@@ -244,7 +244,7 @@ async def check_weather_alerts():
 
 scheduler = AsyncIOScheduler()
 scheduler.add_job(check_weather_alerts, 'interval', hours=1)
-scheduler.start()
+# scheduler.start()  # УБРАТЬ отсюда
 
 # --- FastAPI webhook endpoint ---
 @app.post(WEBHOOK_PATH)
@@ -256,6 +256,7 @@ async def bot_webhook(request: Request):
 @app.on_event("startup")
 async def on_startup():
     await bot.set_webhook(WEBHOOK_URL)
+    scheduler.start()  # ← Запускать здесь!
 
 @app.on_event("shutdown")
 async def on_shutdown():
