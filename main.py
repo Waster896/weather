@@ -120,12 +120,16 @@ def generate_voice_message(text):
 # --- Хендлеры ---
 @dp.message(F.text.in_(["/start", "/help"]))
 async def send_welcome(message: types.Message):
-    markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(
-        KeyboardButton('🌤 Текущая погода'),
-        KeyboardButton('📅 Прогноз на 5 дней'),
-        KeyboardButton('⚠️ Установить уведомление'),
-        KeyboardButton('📍 Поделиться локацией', request_location=True)
+    markup = ReplyKeyboardMarkup(
+        keyboard=[
+            [
+                KeyboardButton(text='🌤 Текущая погода'),
+                KeyboardButton(text='📅 Прогноз на 5 дней'),
+                KeyboardButton(text='⚠️ Установить уведомление'),
+                KeyboardButton(text='📍 Поделиться локацией', request_location=True)
+            ]
+        ],
+        resize_keyboard=True
     )
     await message.answer(
         "Добро пожаловать в WeatherBot!\n"
