@@ -2,3 +2,7 @@ aiogram>=3.0.0
 fastapi
 uvicorn
 python-dotenv
+matplotlib
+gTTS
+pytz
+requests
