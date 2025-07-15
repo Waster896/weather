@@ -9,6 +9,7 @@ import httpx
 from dotenv import load_dotenv
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from contextlib import asynccontextmanager
+import time
 
 from fastapi import FastAPI, Request
 from aiogram import Bot, Dispatcher, types, F
@@ -68,18 +69,28 @@ db_conn, db_cursor = init_db()
 
 # --- Основные функции ---
 async def get_weather_data(city, forecast=False):
+    start_time = time.monotonic()
     async with httpx.AsyncClient() as client:
         if forecast:
             url = f"http://api.openweathermap.org/data/2.5/forecast?q={city}&appid={WEATHER_API}&units=metric&lang=ru"
         else:
             url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API}&units=metric&lang=ru"
+        print(f"[get_weather_data] city={city}, forecast={forecast}, url={url}")
         try:
+            req_start = time.monotonic()
             response = await client.get(url, timeout=10)
+            req_time = time.monotonic() - req_start
+            print(f"[get_weather_data] HTTP status: {response.status_code}, request_time={req_time:.3f}s")
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            print(f"[get_weather_data] Response keys: {list(data.keys())}")
+            return data
         except Exception as e:
-            print(f"Ошибка при запросе погоды: {e}")
+            print(f"[get_weather_data] Ошибка при запросе погоды: {e}")
             return None
+        finally:
+            total_time = time.monotonic() - start_time
+            print(f"[get_weather_data] Total time: {total_time:.3f}s")
 
 def generate_temp_plot(data):
     try:
