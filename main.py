@@ -269,8 +269,9 @@ async def root():
 
 @app.post(WEBHOOK_PATH)
 async def bot_webhook(request: Request):
-    update = await request.json()
-    print("[WEBHOOK] Incoming update:", update)  # Логируем входящие запросы
+    data = await request.json()
+    update = types.Update.model_validate(data)
+    print("[WEBHOOK] Incoming update:", update)
     await dp.feed_update(bot, update)
     return {"ok": True}
 
